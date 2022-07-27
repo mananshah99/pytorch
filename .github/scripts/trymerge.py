@@ -1055,7 +1055,11 @@ def try_revert(repo: GitRepo, pr: GitHubPR, *,
     author_login = comment.author_login
     # For some reason, one can not be a member of private repo, only CONTRIBUTOR
     expected_association = "CONTRIBUTOR" if pr.is_base_repo_private() else "MEMBER"
-    if author_association != expected_association and author_association != "OWNER" and pr.get_pr_creator_login() != author_login:
+    # We allow reverts when:
+    # 1. The revert requestor a known member/contributor or an owner
+    # 2. The revert requestor is a known contributor and they're reverting their own PR
+    is_self_revert = pr.get_pr_creator_login() == author_login and author_association in ["CONTRIBUTOR", "COLLABORATOR", "MEMBER"]
+    if author_association != expected_association and author_association != "OWNER" and not is_self_revert:
         return post_comment(f"Will not revert as @{author_login} is not a {expected_association}, but {author_association}, and they are not the original author of this PR")
     skip_internal_checks = can_skip_internal_checks(pr, comment_id)
 
